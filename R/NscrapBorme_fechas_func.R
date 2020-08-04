@@ -131,7 +131,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         pos_barras <- gregexpr(pattern = "[/]+",text = url)
         #nombre_borme <- substr(url,pos_barras[[1]][length(pos_barras[[1]])]+1,pos_puntos[[1]][length(pos_puntos[[1]])]-1)
 
-        archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
+        #archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
+        archivo_temporal <- tempfile(pattern = "", tmpdir = "/var/tmp", fileext = ".pdf")
         # mode = wb es en binary
         download.file(url, destfile = archivo_temporal, mode = "wb")
 
