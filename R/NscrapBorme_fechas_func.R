@@ -135,6 +135,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         # mode = wb es en binary
         download.file(url, destfile = archivo_temporal, mode = "wb")
 
+        print("LLEGO archivo")
+
         txt <- pdf_text(archivo_temporal)
         info <- pdf_info(archivo_temporal)
         data<-pdf_data(archivo_temporal)
@@ -180,6 +182,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         ##Nombre de las empresas
         `EMPRESA` <-sub("\\.\n.*", "", docs)
+
+        print("LLEGO empresa")
 
         ##Numero de registros realizados
         total_docs<-length(EMPRESA)
@@ -405,6 +409,9 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         data<-data.frame(EMPRESA,Fusion_sociedades_absorbidas,Modificaciones_estatutarias,Cambio_denominacion_social,Cambio_domicilio_social,
                          Cambio_objeto_social,CESES,NOMBRAMIENTOS,`AMPLIACION CAPITAL`,Declaracion_unipersonalidad,
                          `REDUCCION CAPITAL`,REELECCIONES,REVOCACIONES, `SITUACIÓN CONCURSAL`, Disolucion,Extincion,CONSTITUCION,Otros_conceptos,Datos_registrales,stringsAsFactors=FALSE)
+
+        print("LLEGO data")
+
         s<-0
         ncol<-ncol(data)
         BBDD<-data.frame(EMPRESA,stringsAsFactors=F)
@@ -436,6 +443,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         # CÁLCULO DISTANCIAS ENTRE LONG., LAT. REFERENCIA Y DOMICILIOS CONSTITUCIÓN EMPRESAS
         #####################################################################################
 
+        print("LLEGO inicio geo")
+
         #Coordenadas de referencia del municipio con geocoder API
         #Endpoint geocoder API
         geocoder_endpoint <- "https://geocoder.api.here.com/6.2/geocode.json?app_id=HRwFz9rfbtRq63qGH4ZQ&app_code=aMRd84WGRs4h1591F-g82w&searchtext="
@@ -446,7 +455,7 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         latitud_ref_municipio <- coordenadas_ref_municipio$Location$DisplayPosition$Latitude
         coor_referencia <- c(longitud_ref_municipio, latitud_ref_municipio)
 
-        print("LLEGO")
+        print("LLEGO geo")
 
         #Bucle coordenadas y municipio localización empresa
         variables_domicilio <- c("Const_domicilio", "Cambio_domicilio_social")
