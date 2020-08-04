@@ -141,7 +141,7 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         txt <- pdf_text(archivo_temporal)
         info <- pdf_info(archivo_temporal)
-        data<-pdf_data(archivo_temporal)
+        #data<-pdf_data(archivo_temporal)
         pages<-info$pages
         documents <- strsplit(txt,"*.[0-9] - ", fixed=F)  #Split del txt PDF por "-". El número previo a "-" hace referencia al número de empresas del año presente.
 
