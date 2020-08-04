@@ -133,12 +133,14 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         #archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
         archivo_temporal <- tempfile(pattern = "", tmpdir = "/var/tmp", fileext = ".pdf")
+        print(archivo_temporal)
         # mode = wb es en binary
         download.file(url, destfile = archivo_temporal, mode = "wb")
 
         print("LLEGO archivo")
 
         txt <- pdf_text(archivo_temporal)
+        print(txt)
         info <- pdf_info(archivo_temporal)
         data<-pdf_data(archivo_temporal)
         pages<-info$pages
