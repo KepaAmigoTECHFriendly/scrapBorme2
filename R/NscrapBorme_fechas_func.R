@@ -140,12 +140,12 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         print("LLEGO archivo")
 
         txt <- pdf_text(archivo_temporal)
-        print(txt)
         info <- pdf_info(archivo_temporal)
         data<-pdf_data(archivo_temporal)
         pages<-info$pages
         documents <- strsplit(txt,"*.[0-9] - ", fixed=F)  #Split del txt PDF por "-". El número previo a "-" hace referencia al número de empresas del año presente.
 
+        print(documents)
         ###############################################
 
         docs<-{}
@@ -183,8 +183,11 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         }
         docs <- na.omit(docs)
 
+        print(docs)
+
         ##Nombre de las empresas
-        `EMPRESA` <-sub("\\.\n.*", "", docs)
+        EMPRESA <-sub("\\.\n.*", "", docs)
+        print(EMPRESA)
 
         print("LLEGO empresa")
 
