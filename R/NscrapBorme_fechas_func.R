@@ -101,8 +101,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
       #Tiempo de referencia para posterior suma con el objetivo de evitar pisados en el timestamp de la plataforma Smart City
       t_ref <- "00:00:00"
 
-      print(posicion_urls)
-
       #Bucle ejecución N Bormes
       for(p in 1:length(posicion_urls)){
 
@@ -112,7 +110,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         #Lógica para variar timestamp y evitar pisados en plataforma Smart City
         fecha_borme <- as.POSIXct(paste(fechas[z], t_ref)) + 3600*(p-1)
 
-        print("NUEVO")
         print(fecha_borme)
         print(provincia)
         print(url)
@@ -133,11 +130,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         #archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
         archivo_temporal <- tempfile(pattern = "", tmpdir = "/var/tmp", fileext = ".pdf")
-        print(archivo_temporal)
         # mode = wb es en binary
         download.file(url, destfile = archivo_temporal, mode = "wb")
-
-        print("LLEGO archivo")
 
         txt <- pdf_text(archivo_temporal)
         info <- pdf_info(archivo_temporal)
@@ -145,7 +139,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         pages<-info$pages
         documents <- strsplit(txt,"*.[0-9] - ", fixed=F)  #Split del txt PDF por "-". El número previo a "-" hace referencia al número de empresas del año presente.
 
-        print(documents)
         ###############################################
 
         docs<-{}
@@ -170,7 +163,7 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         #Bucle para evitar errores en la separación del texto (pdf) por empresa
         for(i in 1:length(docs)){
-          valor_bool <- grepl("Datos registrales", docs[i])
+          valor_bool <- grepl("registrales", docs[i])
 
           if(!valor_bool){
             docs[i] <- paste(docs[i], docs[i+1], sep = "")
@@ -183,13 +176,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         }
         docs <- na.omit(docs)
 
-        print(docs)
-
         ##Nombre de las empresas
         EMPRESA <-sub("\\.\n.*", "", docs)
-        print(EMPRESA)
-
-        print("LLEGO empresa")
 
         ##Numero de registros realizados
         total_docs<-length(EMPRESA)
@@ -221,7 +209,23 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         docs<-str_replace_all(docs,"fusión por absorción","FUSIÓN POR ABSORCIÓN")
         docs<-str_replace_all(docs,"cambio de denominación social","CAMBIO DE DENOMINACIÓN SOCIAL")
         docs<-str_replace_all(docs,"situación concursal","SITUACIÓN CONCURSAL")
+        docs<-str_replace_all(docs,"escisión parcial","ESCISIÓN PARCIAL")
+        docs<-str_replace_all(docs,"transformación de sociedad","TRANSFORMACIÓN DE SOCIEDAD")
         docs<-docs%>%str_squish()
+
+        # TRANSFORMACIÓN DE SOCIEDAD
+        transformacion <- str_extract(docs,"TRANSFORMACIÓN DE SOCIEDAD.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+        Denom_y_forma <- transformacion %>% gsub(".*denominación y forma adoptada: ","",.)
+
+        TRANSFORMACIÓN <- data.frame(Denom_y_forma,
+                                     stringsAsFactors = F)
+
+        # ESCISIÓN PARCIAL
+        escision <- str_extract(docs,"ESCISIÓN PARCIAL.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+        Escision_parcial <- escision %>% gsub(".*ESCISIÓN PARCIAL. ","",.)
+
+        ESCISIÓN <- data.frame(Escision_parcial,
+                               stringsAsFactors = F)
 
 
         ##SITUACIÓN CONCURSAL
@@ -398,6 +402,11 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         ##EXTINCION
         Extincion <-str_extract(docs,"EXTINCIÓN.*?[A-Z]")%>%gsub("[A-Z]$","",.)%>%gsub("EXTINCIÓN\\.","",.)
+        for(i in 1:length(Extincion)){
+          if(!is.na(Extincion[i]) & nchar(Extincion[i]) < 2) {
+            Extincion[i] <- 1
+          }
+        }
 
         ##DISOLUCION
         Disolucion <-str_extract(docs,"DISOLUCIÓN.*?[A-Z]")%>%gsub("[A-Z]$","",.)%>%gsub("DISOLUCIÓN\\.","",.)
@@ -414,9 +423,7 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         data<-data.frame(EMPRESA,Fusion_sociedades_absorbidas,Modificaciones_estatutarias,Cambio_denominacion_social,Cambio_domicilio_social,
                          Cambio_objeto_social,CESES,NOMBRAMIENTOS,`AMPLIACION CAPITAL`,Declaracion_unipersonalidad,
-                         `REDUCCION CAPITAL`,REELECCIONES,REVOCACIONES, `SITUACIÓN CONCURSAL`, Disolucion,Extincion,CONSTITUCION,Otros_conceptos,Datos_registrales,stringsAsFactors=FALSE)
-
-        print("LLEGO data")
+                         `REDUCCION CAPITAL`,REELECCIONES,REVOCACIONES, `SITUACIÓN CONCURSAL`, ESCISIÓN, TRANSFORMACIÓN, Disolucion,Extincion,CONSTITUCION,Otros_conceptos,Datos_registrales,stringsAsFactors=FALSE)
 
         s<-0
         ncol<-ncol(data)
@@ -449,8 +456,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         # CÁLCULO DISTANCIAS ENTRE LONG., LAT. REFERENCIA Y DOMICILIOS CONSTITUCIÓN EMPRESAS
         #####################################################################################
 
-        print("LLEGO inicio geo")
-
         #Coordenadas de referencia del municipio con geocoder API
         #Endpoint geocoder API
         geocoder_endpoint <- "https://geocoder.api.here.com/6.2/geocode.json?app_id=HRwFz9rfbtRq63qGH4ZQ&app_code=aMRd84WGRs4h1591F-g82w&searchtext="
@@ -460,8 +465,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         longitud_ref_municipio <- coordenadas_ref_municipio$Location$DisplayPosition$Longitude
         latitud_ref_municipio <- coordenadas_ref_municipio$Location$DisplayPosition$Latitude
         coor_referencia <- c(longitud_ref_municipio, latitud_ref_municipio)
-
-        print("LLEGO geo")
 
         #Bucle coordenadas y municipio localización empresa
         variables_domicilio <- c("Const_domicilio", "Cambio_domicilio_social")
@@ -593,7 +596,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
 
         #Extracción timestamp en formato unix
         tsi <- format(as.numeric(anytime(fecha_borme))*1000,scientific = F)
-        print(tsi)
         #tsi <- sub("\\..*", "",tsi)
         for(i in 1:nrow(data)){
           ts <- as.numeric(tsi) +i  #Añade i ms al timestamp para poder verse sin solapamiento en el widget de la plataforma smart city.

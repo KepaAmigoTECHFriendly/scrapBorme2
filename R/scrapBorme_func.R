@@ -60,7 +60,7 @@ lectura_borme <- function(url=""){
 
   #Bucle para evitar errores en la separación del texto (pdf) por empresa
   for(i in 1:length(docs)){
-    valor_bool <- grepl("Datos registrales", docs[i])
+    valor_bool <- grepl("registrales", docs[i])
 
     if(!valor_bool){
       docs[i] <- paste(docs[i], docs[i+1], sep = "")
@@ -102,7 +102,39 @@ lectura_borme <- function(url=""){
   docs<-str_replace_all(docs,"reducción de capital","REDUCCIÓN DE CAPITAL")
   docs<-str_replace_all(docs,"fusión por absorción","FUSIÓN POR ABSORCIÓN")
   docs<-str_replace_all(docs,"cambio de denominación social","CAMBIO DE DENOMINACIÓN SOCIAL")
+  docs<-str_replace_all(docs,"situación concursal","SITUACIÓN CONCURSAL")
+  docs<-str_replace_all(docs,"escisión parcial","ESCISIÓN PARCIAL")
+  docs<-str_replace_all(docs,"transformación de sociedad","TRANSFORMACIÓN DE SOCIEDAD")
   docs<-docs%>%str_squish()
+
+
+  # TRANSFORMACIÓN DE SOCIEDAD
+  transformacion <- str_extract(docs,"TRANSFORMACIÓN DE SOCIEDAD.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+  Denom_y_forma <- transformacion %>% gsub(".*denominación y forma adoptada: ","",.)
+
+  TRANSFORMACIÓN <- data.frame(Denom_y_forma,
+                               stringsAsFactors = F)
+
+  # ESCISIÓN PARCIAL
+  escision <- str_extract(docs,"ESCISIÓN PARCIAL.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+  Escision_parcial <- escision %>% gsub(".*ESCISIÓN PARCIAL. ","",.)
+
+  ESCISIÓN <- data.frame(Escision_parcial,
+                         stringsAsFactors = F)
+
+  ##SITUACIÓN CONCURSAL
+  situacion_concursal<-str_extract(docs,"SITUACIÓN CONCURSAL.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+
+  Sit_conc_procedimiento <- situacion_concursal %>% str_extract("procedimiento concursal.*?\\.")%>%gsub("procedimiento concursal","",.)
+  Sit_conc_firme <- situacion_concursal %>% str_extract("firme.*?\\,")%>%gsub("firme:","",.)%>%gsub(",","",.)
+  Sit_conc_fecha_resolucion <- situacion_concursal %>% str_extract("fecha de resolución.*?\\.")%>%gsub("fecha de resolución","",.)
+  Sit_conc_proceso <- situacion_concursal %>% str_extract("sit_conc_firme.*?\\.")%>%gsub("sit_conc_firme","",.)
+  Sit_conc_juzgado <- situacion_concursal %>% str_extract("juzgado: num..*?\\.")%>%gsub("juzgado:","",.)
+  Sit_conc_juez <- situacion_concursal %>% str_extract("juez.*?\\.")%>%gsub("juez:","",.)
+  Sit_conc_resoluciones <- situacion_concursal %>% str_extract("resoluciones.*?\\.")%>%gsub("resoluciones:","",.)
+
+  `SITUACIÓN CONCURSAL` <- data.frame(Sit_conc_procedimiento, Sit_conc_firme, Sit_conc_fecha_resolucion, Sit_conc_proceso, Sit_conc_juzgado, Sit_conc_juez, Sit_conc_resoluciones,
+                                      stringsAsFactors = F)
 
   ##NOMBRAMIENTOS
   var_nombramientos<-str_extract(docs,"NOMBRAMIENTOS.*?[A-Z]")%>%gsub("[A-Z]$","",.)
@@ -269,7 +301,7 @@ lectura_borme <- function(url=""){
   OTROS_CONCEPTOS<-str_extract(docs,"OTROS CONCEPTOS.*?[A-Z]")%>%gsub("[A-Z]$","",.)%>%gsub("OTROS CONCEPTOS:","",.)
   DATOS_REGISTRALES<-str_extract(docs,"DATOS REGISTRALES.*")%>%gsub("\\.$","",.)%>%gsub("DATOS REGISTRALES\\.","",.)
 
-  data<-data.frame(EMPRESA,FUSION_SOCIEDADESABSORBIDAS,MODIFICACIONES_ESTATUARIAs,CAMBIOSDENOMINACIONSOCIAL,CAMBIO_OBJETO_SOCIAL,CESES,NOMBRAMIENTOS,AMPLIACIONCAPITAL,DECLARACIONUNIPERSONALIDAD,REDUCCIONCAPITAL,REELECCIONES,REVOCACIONES,DISOLUCION,EXTINCION,CONSTITUCION,OTROS_CONCEPTOS,DATOS_REGISTRALES,stringsAsFactors=FALSE)
+  data<-data.frame(EMPRESA,FUSION_SOCIEDADESABSORBIDAS,MODIFICACIONES_ESTATUARIAs,CAMBIOSDENOMINACIONSOCIAL,CAMBIO_OBJETO_SOCIAL,CESES,NOMBRAMIENTOS,AMPLIACIONCAPITAL,DECLARACIONUNIPERSONALIDAD,REDUCCIONCAPITAL,REELECCIONES,REVOCACIONES, `SITUACIÓN CONCURSAL`, ESCISIÓN, TRANSFORMACIÓN, DISOLUCION,EXTINCION,CONSTITUCION,OTROS_CONCEPTOS,DATOS_REGISTRALES,stringsAsFactors=FALSE)
   s<-0
   ncol<-ncol(data)
   BBDD<-data.frame(EMPRESA,stringsAsFactors=F)

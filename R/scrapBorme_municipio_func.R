@@ -78,7 +78,7 @@ lectura_borme_municipio <- function(url, municipio, radio, provincia, fecha_borm
 
   #Bucle para evitar errores en la separación del texto (pdf) por empresa
   for(i in 1:length(docs)){
-    valor_bool <- grepl("Datos registrales", docs[i])
+    valor_bool <- grepl("registrales", docs[i])
 
     if(!valor_bool){
       docs[i] <- paste(docs[i], docs[i+1], sep = "")
@@ -126,7 +126,24 @@ lectura_borme_municipio <- function(url, municipio, radio, provincia, fecha_borm
   docs<-str_replace_all(docs,"fusión por absorción","FUSIÓN POR ABSORCIÓN")
   docs<-str_replace_all(docs,"cambio de denominación social","CAMBIO DE DENOMINACIÓN SOCIAL")
   docs<-str_replace_all(docs,"situación concursal","SITUACIÓN CONCURSAL")
+  docs<-str_replace_all(docs,"escisión parcial","ESCISIÓN PARCIAL")
+  docs<-str_replace_all(docs,"transformación de sociedad","TRANSFORMACIÓN DE SOCIEDAD")
   docs<-docs%>%str_squish()
+
+
+  # TRANSFORMACIÓN DE SOCIEDAD
+  transformacion <- str_extract(docs,"TRANSFORMACIÓN DE SOCIEDAD.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+  Denom_y_forma <- transformacion %>% gsub(".*denominación y forma adoptada: ","",.)
+
+  TRANSFORMACIÓN <- data.frame(Denom_y_forma,
+                               stringsAsFactors = F)
+
+  # ESCISIÓN PARCIAL
+  escision <- str_extract(docs,"ESCISIÓN PARCIAL.*?[A-Z]")%>%gsub("[A-Z]$","",.)
+  Escision_parcial <- escision %>% gsub(".*ESCISIÓN PARCIAL. ","",.)
+
+  ESCISIÓN <- data.frame(Escision_parcial,
+                         stringsAsFactors = F)
 
 
   ##SITUACIÓN CONCURSAL
@@ -305,6 +322,11 @@ lectura_borme_municipio <- function(url, municipio, radio, provincia, fecha_borm
 
   ##EXTINCION
   Extincion <-str_extract(docs,"EXTINCIÓN.*?[A-Z]")%>%gsub("[A-Z]$","",.)%>%gsub("EXTINCIÓN\\.","",.)
+  for(i in 1:length(Extincion)){
+    if(!is.na(Extincion[i]) & nchar(Extincion[i]) < 2) {
+      Extincion[i] <- 1
+    }
+  }
 
   ##DISOLUCION
   Disolucion <-str_extract(docs,"DISOLUCIÓN.*?[A-Z]")%>%gsub("[A-Z]$","",.)%>%gsub("DISOLUCIÓN\\.","",.)
@@ -321,7 +343,7 @@ lectura_borme_municipio <- function(url, municipio, radio, provincia, fecha_borm
 
   data<-data.frame(EMPRESA,Fusion_sociedades_absorbidas,Modificaciones_estatutarias,Cambio_denominacion_social,Cambio_domicilio_social,
                    Cambio_objeto_social,CESES,NOMBRAMIENTOS,`AMPLIACION CAPITAL`,Declaracion_unipersonalidad,
-                   `REDUCCION CAPITAL`,REELECCIONES,REVOCACIONES,`SITUACIÓN CONCURSAL`,Disolucion,Extincion,CONSTITUCION,Otros_conceptos,Datos_registrales,stringsAsFactors=FALSE)
+                   `REDUCCION CAPITAL`,REELECCIONES,REVOCACIONES,`SITUACIÓN CONCURSAL`, ESCISIÓN, TRANSFORMACIÓN, Disolucion,Extincion,CONSTITUCION,Otros_conceptos,Datos_registrales,stringsAsFactors=FALSE)
   s<-0
   ncol<-ncol(data)
   BBDD<-data.frame(EMPRESA,stringsAsFactors=F)
