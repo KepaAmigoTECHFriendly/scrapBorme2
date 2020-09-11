@@ -37,8 +37,8 @@ lectura_borme_municipio <- function(url, municipio, radio, provincia, fecha_borm
   provincia <- provincia
 
   #Envío JSON a plataforma
-  TB_token <- "SDszy9P3S9B3Yc7aFQ42"
-  TB_url   <- paste("http://88.99.184.100:8080/api/v1/",TB_token,"/telemetry",sep="")
+  TB_token <- "eFbps1EKXC6fpqksxNLX"
+  TB_url   <- paste("http://78.47.39.122:8080/api/v1/",TB_token,"/telemetry",sep="")
 
   pos_puntos <- gregexpr(pattern = "[[:punct:]]+",text = url)
   pos_barras <- gregexpr(pattern = "[/]+",text = url)
