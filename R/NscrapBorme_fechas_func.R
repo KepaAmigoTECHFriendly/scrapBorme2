@@ -24,10 +24,23 @@
 #' anytime
 #' xml2
 #' purrr
+#' RPostgres
+#' RPostgreSQL
+#' DBI
 #'
 #' @export
 
 N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Date()){
+
+  # 1) CONEXIÓN BBDD
+  db          <- 'datawarehouse'
+  host_db     <- '78.47.226.232'
+  db_port     <- '5432'
+  db_user     <- 'postgres'
+  db_password <- 'postgressysadmin_2019'
+
+  con <- dbConnect(RPostgres::Postgres(), dbname = db, host=host_db, port=db_port, user=db_user, password=db_password)
+  print(con@bigint)
 
   url_general <- "https://www.boe.es/borme/dias/"
   municipio <- municipio
@@ -101,6 +114,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
       #Tiempo de referencia para posterior suma con el objetivo de evitar pisados en el timestamp de la plataforma Smart City
       t_ref <- "00:00:00"
 
+      print(posicion_urls)
+
       #Bucle ejecución N Bormes
       for(p in 1:length(posicion_urls)){
 
@@ -128,8 +143,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         pos_barras <- gregexpr(pattern = "[/]+",text = url)
         #nombre_borme <- substr(url,pos_barras[[1]][length(pos_barras[[1]])]+1,pos_puntos[[1]][length(pos_puntos[[1]])]-1)
 
-        #archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
-        archivo_temporal <- tempfile(pattern = "", tmpdir = "/var/tmp", fileext = ".pdf")
+        archivo_temporal <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".pdf")
+        #archivo_temporal <- tempfile(pattern = "", tmpdir = "/var/tmp", fileext = ".pdf")
         # mode = wb es en binary
         download.file(url, destfile = archivo_temporal, mode = "wb")
 
@@ -455,10 +470,11 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         #####################################################################################
         # CÁLCULO DISTANCIAS ENTRE LONG., LAT. REFERENCIA Y DOMICILIOS CONSTITUCIÓN EMPRESAS
         #####################################################################################
+        print("GEO")
 
         #Coordenadas de referencia del municipio con geocoder API
         #Endpoint geocoder API
-        geocoder_endpoint <- "https://geocoder.ls.hereapi.com/6.2/geocode.json?apiKey=Gu5LAWMlU4PyzTwSIj-7eK052fzFmkpOvItCbWm0TKU&searchtext="
+        geocoder_endpoint <- "https://geocoder.ls.hereapi.com/6.2/geocode.json?apiKey=Xey7gbg0XzIeEeLVFheau032gFXySwY1oQOlhpVZn34&searchtext="
 
         coordenadas_ref_municipio <- jsonlite::fromJSON(paste(geocoder_endpoint,URLencode(municipio),"%20(Espa%C3%B1a)",sep = ""))
         coordenadas_ref_municipio <- coordenadas_ref_municipio$Response$View$Result %>% as.data.frame()
@@ -487,7 +503,8 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
             domicilio <- gsub(" ","%20",domicilio)
             domicilio <- iconv(domicilio,from="UTF-8",to="ASCII//TRANSLIT")
 
-            coordenadas_domicilios <- jsonlite::fromJSON(paste(geocoder_endpoint, domicilio,sep=""))
+            Sys.sleep(6) # Es necesario esperar >5 segundos por requisito de HERE api. Actualización del 01/04/2021
+            coordenadas_domicilios <- jsonlite::fromJSON(paste(geocoder_endpoint,URLencode(domicilio),"%20(Espa%C3%B1a)",sep=""))
             coordenadas_domicilios <- coordenadas_domicilios$Response$View$Result %>% as.data.frame()
 
             if(is.na(domicilio) | is.null(coordenadas_domicilios$Location$DisplayPosition$Longitude[1])){
@@ -580,39 +597,120 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
         data$`Distancia respecto municipio km` <- unlist(distancia_geometrica_coordenadas)
         data$`Dentro del radio de referencia km` <- unlist(empresa_dentro_del_radio)
         data$`Provincia Borme` <- provincia
-
+        fecha_borme <- format(fecha_borme,"%Y/%m/%d")
+        data$fecha <- rep(format(as.Date(fecha_borme),"%d/%m/%Y"),nrow(data))
         data[is.na(data)] <- "-"
 
+        #Cambio nombres
 
-        #################################################################
-        # CREACIÓN JSON Y ENVÍO A PLATAFORMA SMART CITY
-        #################################################################
+        nombres <- c("Denominación social","Fusión sociedades absorbidas", "Modificaciones estatutarias",
+                     "Cambio denominación social", "Cambio domicilio social", "Cambio objeto social",
+                     "Ceses liquiSoli", "Ceses apoderado", "Ceses Adm. Único",
+                     "Ceses liquidador", "Ceses liquidador mancomunado", "Ceses adminSolid",
+                     "Ceses Adm. Mancomunado", "Ceses Soc. Prof", "Ceses depositorio",
+                     "Ceses entid. Deposit.", "Ceses entid. Promo.", "Ceses consejero",
+                     "Ceses vicepresidente", "Ceses presidente", "Ceses secretario",
+                     "Nombramiento liquiSoli", "Nombramiento apoderado", "Nombramiento Adm. Único",
+                     "Nombramiento liquidador", "Nombramiento liquidador mancomunado", "Nombramiento Adm. Solid",
+                     "Nombramiento Soc. Prof", "Nombramiento auditor","Nombramiento Adm. Mancomunado",
+                     "Nombramiento Entid. Deposit.", "Nombramiento Entid. Promo.", "Nombramiento consejero",
+                     "Nombramiento vicepresidente","Nombramiento presidente", "Nombramiento secretario",
+                     "Ampliación capital suscrito", "Ampliación capital resultante suscrito", "Ampliación capital desembolsado",
+                     "Ampliación capital resultante desembolsado", "Ampliación capital", "Declaración unipersonalidad socio único",
+                     "Reducción capital importe reducción","Reducción capital resultante suscrito", "Reelecciones Adm. Único",
+                     "Reelecciones auditor", "Reelecciones auditor suplente", "Revocaciones auditor",
+                     "Revocaciones apoderado", "Revocaciones apoderado mancomunado", "Revocaciones apoderadoSol",
+                     "Situación Concursal Procedimiento", "Situación Concursal Resolución firme","Situación Concursal Fecha Resolución",
+                     "Situación Concursal Proceso", "Situación Concursal Juzgado", "Situación Concursal Juez",
+                     "Situación Concursal Resoluciones", "Escisión", "Transformación", "Disolución", "Extinción",
+                     "Constitución comienzo operaciones", "Constitución objeto social","Constitución domicilio social",
+                     "Constitución capital", "Otros conceptos","Datos registrales",
+                     "Coordenadas empresa","Latitud", "Longitud","Municipio",
+                     "Distancia respecto municipio en km","Dentro", "Provincia","Fecha"
+        )
 
-        nombreArchivo<-info$keys$Subject
-        #write.csv(BBDD,paste('C:\\TechFriendly\\IZARRA\\Borme\\',paste(nombreArchivo,".csv",collapse=""),collapse=""),row.names=F)
-        #write_json(BBDD,paste('C:\\TechFriendly\\IZARRA\\Borme\\paquete_borme\\',paste(nombreArchivo,".json",collapse=""),collapse=""),pretty=T)
+        colnames(data) <- nombres
 
-        json_borme_return <- jsonlite::toJSON(data,pretty=T)
+        #Extracción forma jurídica
 
-        #Extracción timestamp en formato unix
-        tsi <- format(as.numeric(anytime(fecha_borme))*1000,scientific = F)
-        #tsi <- sub("\\..*", "",tsi)
-        for(i in 1:nrow(data)){
-          ts <- as.numeric(tsi) +i  #Añade i ms al timestamp para poder verse sin solapamiento en el widget de la plataforma smart city.
+        #Generación forma jurídica
+        forma_juridica <- c()
+        for(i in 1:length(data$`Denominación social`)){
+          # Si tiene la palbra sociedad no tiene el acrónimo SIN ACRÓNIMO
+          pos_ultimo_espacio <- gregexpr(" ",data$`Denominación social`[i])[[1]][length(gregexpr(" ",data$`Denominación social`[i])[[1]])]
+          acronimo <- gsub("[.]","",str_trim(substring(data$`Denominación social`[i],pos_ultimo_espacio,nchar(data$`Denominación social`[i]))))
+          if(any(grepl("sociedad",tolower(data$`Denominación social`[i]))) & acronimo != "SL" & acronimo != "SA"){
+            pos_sociedad <- gregexpr("sociedad", tolower(data$`Denominación social`[i]))[[1]][length(gregexpr("sociedad",tolower(data$`Denominación social`[i]))[[1]])]
+            forma_juridica1 <- str_trim(substring(data$`Denominación social`[i],pos_sociedad,nchar(data$`Denominación social`[i])))
 
-          #Creación de JSON noticias y eliminación de ][ para cumplir con el formato json con modificación de timestamp de thingsboard.
-          json_borme <- jsonlite::toJSON(data[i,],pretty=T)
-          json_borme <- sub("[[]","",json_borme)
-          json_borme <- sub("[]]","",json_borme)
+            if(any(grepl("liquidacion",tolower(data$`Denominación social`[i])))){
+              nuevo_nombre <- gsub(" EN LIQUIDACION","",data$`Denominación social`[i])
+              pos_ultimo_espacio <- gregexpr(" ",nuevo_nombre)[[1]][length(gregexpr(" ",nuevo_nombre)[[1]])]
+              forma_juridica1 <- str_trim(substring(nuevo_nombre,pos_ultimo_espacio,nchar(nuevo_nombre)))
 
-          #Formato json con modificación de timestamp de thingsboard.
-          json_envio_plataforma <- paste('{"ts":',ts,', "values":',json_borme,"}",sep="")
+              if(nchar(forma_juridica1) > 3){
+                forma_juridica1 <- "Otras"
+              }
+            }
 
-          #Envío JSON a plataforma
-          POST(url=TB_url,body=json_envio_plataforma)
+            if(forma_juridica1 != "Otras"){
+              forma_juridica1 <- gsub("DE ","",forma_juridica1)
+              separado <- str_split(forma_juridica1[length(forma_juridica1)]," ")
+              enlace <- NULL
+              for(p in 1:length(separado[[1]])){
+                enlace <- c(enlace,substring(separado[[1]][p],1,1))
+              }
+              if(length(enlace) > 3){
+                forma_juridica1 <- "Otras"
+              }else{
+                forma_juridica1 <- paste(enlace, collapse = ".")
+              }
+
+              if(nchar(gsub("\\.","",forma_juridica1)) > 2 & all(gsub("\\.","",forma_juridica1) != c("AIE","OMS","SAD","SAL","SAP","SCP","SLL","SLP"))){
+                forma_juridica1 <- "Otras"
+              }
+            }
+          }else{   # CON ACRÓNIMO
+            pos_ultimo_espacio <- gregexpr(" ",data$`Denominación social`[i])[[1]][length(gregexpr(" ",data$`Denominación social`[i])[[1]])]
+            forma_juridica1 <- str_trim(substring(data$`Denominación social`[i],pos_ultimo_espacio,nchar(data$`Denominación social`[i])))
+
+            if(nchar(forma_juridica1) > 3){
+              nuevo_nombre <- gsub(" EN LIQUIDACION","",data$`Denominación social`[i])
+              pos_ultimo_espacio <- gregexpr(" ",nuevo_nombre)[[1]][length(gregexpr(" ",nuevo_nombre)[[1]])]
+              forma_juridica1 <- str_trim(substring(nuevo_nombre,pos_ultimo_espacio,nchar(nuevo_nombre)))
+
+              if(nchar(forma_juridica1) > 3){
+                forma_juridica1 <- "Otras"
+              }
+            }else{
+              if(nchar(gsub("\\.","",forma_juridica1)) > 2 & all(gsub("\\.","",forma_juridica1) != c("AIE","OMS","SAD","SAL","SAP","SCP","SLL","SLP"))){
+                forma_juridica1 <- "Otras"
+              }
+            }
+          }
+          forma_juridica <- c(forma_juridica, forma_juridica1[1])
         }
 
-        retorno <- json_borme_return
+        data$`Forma Jurídica` <- gsub("\\.","",forma_juridica)
+
+
+
+        # =================================================================
+        # VOLCADO EN BBDD POSTGRESQL
+        # =================================================================
+
+        # 1) CREACIÓN TABLA TEMPORAL CON DATOS ACTUALES PARA EVITAR DUPLICADOS EN LA TABLA PRINCIPAL
+        #dbWriteTable(con, 'borme',data, temporary = FALSE)
+        dbWriteTable(con, 'borme_temporal',data, temporary = TRUE)
+
+        consulta_evitar_duplicados <- 'INSERT INTO borme SELECT * FROM borme_temporal a WHERE NOT EXISTS (SELECT 0 FROM borme b where b."Denominación social" = a."Denominación social" AND b."Fecha" = a."Fecha")'
+
+        dbGetQuery(con, consulta_evitar_duplicados)  # Ejecución consulta
+        dbRemoveTable(con,"borme_temporal")   # Eliminación tabla temporal
+
+        #dbWriteTable(con, 'borme',data, append = TRUE)
+
+        retorno <- 1
       }
 
       #==========================================================================
@@ -644,8 +742,6 @@ N_lectura_borme_fechas <- function(municipio, radio, provincias, fecha = Sys.Dat
     })
 
   }
-
-
 
   return(retorno)
 }
